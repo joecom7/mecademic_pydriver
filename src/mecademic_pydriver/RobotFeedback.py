@@ -1,6 +1,6 @@
 import socket
 
-from .messageReceiver import messageReceiver
+from .MessageReceiver import MessageReceiver
 from .parsingLib import extract_payload_from_messages, payload2tuple
 
 class RobotFeedback:
@@ -49,7 +49,7 @@ class RobotFeedback:
         if self.socket is None:          
             raise RuntimeError( "RobotFeedback::Connect - socket is None" )
 
-        self.message_receiver = messageReceiver(self.socket, self.message_terminator)
+        self.message_receiver = MessageReceiver(self.socket, self.message_terminator)
     
     def disconnect(self):
         """Disconnects Mecademic Robot object from physical Mecademic Robot

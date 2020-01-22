@@ -1,7 +1,7 @@
 import select
 
 
-class messageReceiver:
+class MessageReceiver:
     """
     Class to handle messages over socket using a message_terminator
     """
