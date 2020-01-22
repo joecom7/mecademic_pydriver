@@ -22,6 +22,7 @@ class RobotController:
         self.EOB = 1
         self.EOM = 1
         self.error = False
+        print('MOD VERSION')
 
     def isInError(self):
         """Status method that checks whether the Mecademic Robot is in error mode.
@@ -50,6 +51,7 @@ class RobotController:
 
         :return status: Return whether the connection is established
         """
+
         try:
             self.socket = socket.socket()                   #Get a socket
             self.socket.settimeout(0.1)                     #set the timeout to 100ms
@@ -389,7 +391,8 @@ class RobotController:
         """
         raw_cmd = "MoveJoints"
         cmd = self._buildCommand(raw_cmd,[theta_1,theta_2,theta_3,theta_4,theta_5,theta_6])
-        return self.exchangeMsg(cmd)
+        self._send(cmd)
+        return None
 
     def MoveLin(self, x, y, z, alpha, beta, gamma):
         """Moves the Mecademic Robot tool reference in a straight line to final
