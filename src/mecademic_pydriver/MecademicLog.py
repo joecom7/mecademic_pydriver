@@ -1,8 +1,8 @@
 
 from collections import deque
 
-from .MessageReceiver import MessageReceiver
-from .parsingLib import message2codepayload
+from mecademic_pydriver.MessageReceiver import MessageReceiver
+from mecademic_pydriver.parsingLib import messages2codepayload
 
 class MecademicLog:
     """
@@ -42,7 +42,7 @@ class MecademicLog:
         if wait_for_new_messages:
             self.message_receiver.wait_for_new_messages()
 
-        messages = message2codepayload( 
+        messages = messages2codepayload( 
                     self.message_receiver.get_last_messages(
                         self.log.maxlen
                         )
@@ -82,14 +82,14 @@ class MecademicLog:
         Remove the message from the log
         Return None if no message found
         code : str
-            The code to search
+            The code to search - the code is found if the error code starts with the provided one
         delete_others : bool (Default False)
             Delete all other occurances of the same code
         """
         message = None
         # find message
         for this_message in reversed(self.log):
-            if this_message[0] == code:
+            if this_message[0].startswith(code):
                 message = this_message
                 break
         #if found remove it from log
@@ -112,3 +112,19 @@ class MecademicLog:
                 messages_to_remove.append(message)
         for message in messages_to_remove:
             self.log.remove(message)
+
+    def get_all_messages(self,code):
+        """
+        Get all messages from the Log
+        Clear the log
+        return [] if the log is empty
+        """
+        messages = list(self.log)
+        self.clear_log()
+        return messages
+
+    def clear_log(self):
+        """
+        Clear all messages from the log
+        """
+        self.log.clear()

@@ -1,6 +1,8 @@
 import socket
 import time
 
+from mecademic_pydriver.MecademicLog import MecademicLog
+
 class RobotController:
     """Class for the Mecademic Robot allowing for communication and control of the 
     Mecademic Robot with all of its features available
@@ -12,17 +14,134 @@ class RobotController:
         End of Movement: Setting for EOM reply
         Error: Error Status of the Mecademic Robot
     """
-    def __init__(self, address):
+    def __init__(self, address, socket_timeout=0.1, log_size=100, on_new_messages_received=None):
         """Constructor for an instance of the Class Mecademic Robot 
 
         :param address: The IP address associated to the Mecademic Robot
         """
         self.address = address
+        self.port = 10000
+
         self.socket = None
-        self.EOB = 1
-        self.EOM = 1
-        self.error = False
-        print('MOD VERSION')
+        self.socket_timeout = socket_timeout
+
+        self.mecademic_log = None
+        self.log_size = log_size
+        self.on_new_messages_received = on_new_messages_received
+
+    def connect(self):
+        """
+        Connects Mecademic Robot object communication to the physical Mecademic Robot
+
+        May raise an Exception
+        """
+        #create a socket and connect
+        self.socket = socket.socket()
+        self.socket.settimeout(self.socket_timeout)
+        self.socket.connect((self.address, self.port))
+        self.socket.settimeout(self.socket_timeout)
+
+        #check that socket is not connected to nothing
+        if self.socket is None:          
+            raise RuntimeError( "RobotFeedback::Connect - socket is None" )
+
+        self.mecademic_log = MecademicLog(
+                                self.socket, 
+                                log_size=self.log_size, 
+                                on_new_messages_received=self.on_new_messages_received
+                                )
+
+        self.mecademic_log.update_log()
+
+        #check if error 3001
+        self.handle_specific_error("3001", method_str="connect")
+        self.handle_errors(method_str="connect")
+
+        #check if message 3000
+        self.check_response(["3000"], method_str="check_reconnectsponse")
+
+    def disconnect(self):
+        """
+        Disconnects Mecademic Robot object from physical Mecademic Robot
+        """
+        if(self.socket is not None):
+            self.socket.close()
+            self.socket = None
+
+    def check_response(self, codes, method_str="check_response"):
+        """
+        If the code is not present il the log: raise an exception
+        codes: a list of codes to check
+        method_str : the method that generated the error
+        """
+        for code in codes:
+            msg = self.mecademic_log.get_last_code_occurance(
+                                code, 
+                                delete_others = True
+                                )
+            if msg:
+                return
+        raise RuntimeError("RobotController::{} code {} not found in log".format(method_str,codes))
+
+    def handle_specific_error(self, code, method_str="handle_specific_error"):
+        """
+        If the code is present il the log: raise an exception
+        method_str : the method that generated the error
+        """
+        error_msg = self.mecademic_log.get_last_code_occurance(
+                            code, 
+                            delete_others = True
+                            )
+        if error_msg:
+            raise RuntimeError("RobotController::{} {}".format(method_str,error_msg))
+
+    def handle_errors(self, method_str="handle_errors"):
+        """
+        Generic error handler
+        Check if a error code is present in the log
+        then raise an exception
+        """
+        error_msg = self.mecademic_log.get_last_code_occurance(
+                            "1", # error code starts with 1
+                            delete_others = False
+                            )
+        if error_msg:
+            raise RuntimeError("RobotController::{} {}".format(method_str,error_msg))
+
+    def send_string_command(self, cmd):
+        """
+        Sends a string command to the physical Mecademic Robot
+
+        :param cmd: Command to be sent  (string)
+
+        May raise exceptions
+        This function does not check if robot is in error
+        """
+        command = cmd + '\0'
+        self.socket.sendall(command.encode("ascii"))
+
+    ################################################
+    ###     REQUEST COMMANDS                    ####
+    ################################################
+
+    def ActivateRobot(self):
+        """
+        Call the ActivateRobot request command
+        """
+        #send the command
+        self.send_string_command("ActivateRobot")
+
+        #update the log
+        self.mecademic_log.update_log()
+        #check command specific errors
+        #check if error 1013
+        self.handle_specific_error("1013", method_str="ActivateRobot")
+        #check generic errors
+        self.handle_errors(method_str="ActivateRobot")
+
+        #check the response
+
+
 
     def isInError(self):
         """Status method that checks whether the Mecademic Robot is in error mode.
@@ -45,45 +164,9 @@ class RobotController:
             self.error = True
         return response
 
-    def Connect(self):
-        """Connects Mecademic Robot object communication to the physical Mecademic Robot
-        Returns the status of the connection, true for success, false for failure
+    
 
-        :return status: Return whether the connection is established
-        """
-
-        try:
-            self.socket = socket.socket()                   #Get a socket
-            self.socket.settimeout(0.1)                     #set the timeout to 100ms
-            try:
-                self.socket.connect((self.address, 10000))  #connect to the robot's address
-            except socket.timeout:                          #catch if the robot is not connected to in time
-                raise TimeoutError                          
-            # Receive confirmation of connection
-            if self.socket is None:                         #check that socket is not connected to nothing
-                raise RuntimeError
-            self.socket.settimeout(10)                      #set timeout to 10 seconds
-            try:    
-                response = self.socket.recv(1024).decode("ascii")   #receive message from robot
-            except socket.timeout:
-                raise RuntimeError
-            response_found = self._response_contains(response, ["[3000]"])  #search for key [3000] in the received packet
-            if not response_found:
-                raise RuntimeError
-            else:
-                return response_found                       #return if key was found in packet
-        except TimeoutError:
-            return False
-        # OTHER USER !!!
-        except RuntimeError:
-            return False
-
-    def Disconnect(self):
-        """Disconnects Mecademic Robot object from physical Mecademic Robot
-        """
-        if(self.socket is not None):
-            self.socket.close()
-            self.socket = None
+    
 
     @staticmethod
     def _response_contains(response, code_list):
@@ -182,9 +265,9 @@ class RobotController:
                         return
 
             #if message didn't send correctly, reboot communication
-            self.Disconnect()
+            self.disconnect()
             time.sleep(1)
-            self.Connect()
+            self.connect()
             return
 
     def _buildCommand(self, cmd, arg_list = []):

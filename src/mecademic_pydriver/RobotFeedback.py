@@ -1,7 +1,7 @@
 import socket
 
-from .MessageReceiver import MessageReceiver
-from .parsingLib import extract_payload_from_messages, payload2tuple
+from mecademic_pydriver.MessageReceiver import MessageReceiver
+from mecademic_pydriver.parsingLib import extract_payload_from_messages, payload2tuple
 
 class RobotFeedback:
     """Class for the Mecademic Robot allowing for live positional 

@@ -29,7 +29,7 @@ class MessageReceiver:
         """
         #A socket becomes ready for reading when 
         # 1) someone connects after a call to listen 
-        #   (which means that accept won’t block), 
+        #   (which means that accept won't block), 
         # or 
         # 2) data arrives from the remote end, 
         # or 

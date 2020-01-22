@@ -23,6 +23,15 @@ def message2codepayload(message):
 
     return (code,payload)
 
+def messages2codepayload(messages):
+    """
+    Convert a list of messages in a list of tuple (code, payload)
+    """
+    out = []
+    for message in messages:
+        out.append( message2codepayload(message) )
+    return out
+
 def extract_payload_from_messages(code, messages):
     """
     Extract the payload corresponding to a specific code from message list [message1, message2, ...]
