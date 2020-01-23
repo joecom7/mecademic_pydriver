@@ -17,11 +17,15 @@ class MessageReceiver:
         self.messages = []
         self.message_terminator = message_terminator
 
-    def wait_for_new_messages(self):
+    def wait_for_new_messages(self, timeout=None):
         """
         Wait for new messages in the socket
+        timeout : same meaning of select.select
         """
-        _, _, _ = select.select([self.socket], [], [])
+        if timeout:
+            _, _, _ = select.select([self.socket], [], [], timeout)
+        else:
+            _, _, _ = select.select([self.socket], [], [])
 
     def bytes_available(self):
         """

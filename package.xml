@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>mecademic_pydriver</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>The mecademic_pydriver package</description>
 
-  <maintainer email="support@mecademic.com">Mecademic</maintainer>
+  <maintainer email="marco.costanzo@unicampania.it">Marco Costanzo</maintainer>
 
   <license>MIT</license>
 
-  <url type="website">https://github.com/Mecademic/ROS/tree/master/catkin_ws/src/mecademic_robot_node</url>
+  <url type="website">https://github.com/marcocostanzo/mecademic_pydriver</url>
 
   <author email="support@mecademic.com">Mecademic</author>
   <author email="marco.costanzo@unicampania.it">Marco Costanzo</author>

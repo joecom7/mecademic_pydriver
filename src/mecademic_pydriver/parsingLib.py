@@ -56,3 +56,19 @@ def payload2tuple(payload, output_type = float):
     splitted_payload = payload.split(',')
     return tuple((output_type(x) for x in splitted_payload))
     
+def build_command(cmd, arg_list = []):
+        """
+        Builds the command string to send to the Mecademic Robot
+        from the function name and arguments the command needs
+
+        :param cmd: command name to send to the Mecademic Robot
+        :param arg_list: list of arguments the command requires
+        :return command: final command for the Mecademic Robot
+        """
+        command = cmd
+        if(len(arg_list)!=0):
+            command = command + '('
+            for index in range(0, (len(arg_list)-1)):
+                command = command+str(arg_list[index])+','
+            command = command+str(arg_list[-1])+')'
+        return command

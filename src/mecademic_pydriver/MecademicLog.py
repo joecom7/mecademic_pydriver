@@ -33,14 +33,15 @@ class MecademicLog:
         """
         return list(self.log)
 
-    def update_log(self, wait_for_new_messages=True):
+    def update_log(self, wait_for_new_messages=False, timeout=None):
         """
         Update the log reading messages from the socket
-        wait_for_new_messages : bool (Defult True)
+        wait_for_new_messages : bool (Defult False)
             If True, wait for new messages
+        timeout : same meaning of select.select, used only when wait_for_new_messages=True
         """
         if wait_for_new_messages:
-            self.message_receiver.wait_for_new_messages()
+            self.message_receiver.wait_for_new_messages(timeout)
 
         messages = messages2codepayload( 
                     self.message_receiver.get_last_messages(
@@ -48,11 +49,12 @@ class MecademicLog:
                         )
                     )
         
-        #call the callbk on new messages
-        if self.on_new_messages_received_cb:
-            self.on_new_messages_received_cb(messages)
+        if messages:
+            #call the callbk on new messages
+            if self.on_new_messages_received_cb:
+                self.on_new_messages_received_cb(messages)
 
-        self.log.extend(messages)
+            self.log.extend(messages)
 
     def get_first_message(self):
         """
@@ -108,7 +110,7 @@ class MecademicLog:
         """
         messages_to_remove = []
         for message in self.log:
-            if message[0] == code:
+            if message[0].startswith(code):
                 messages_to_remove.append(message)
         for message in messages_to_remove:
             self.log.remove(message)
