@@ -58,7 +58,7 @@ class RobotFeedback:
             self.socket.close()
             self.socket = None        
 
-    def get_data(self, wait_for_new_messages=True):
+    def get_data(self, wait_for_new_messages=True, timeout=None):
         """
         Receives message from the Mecademic Robot and 
         saves the values in appropriate variables
@@ -70,7 +70,8 @@ class RobotFeedback:
             raise RuntimeError( "RobotFeedback::getData - socket is None" ) #if no connection, nothing to receive
         
         #read message from robot
-        self.message_receiver.wait_for_new_messages()
+        if wait_for_new_messages:
+            self.message_receiver.wait_for_new_messages(timeout)
         messages = self.message_receiver.get_last_messages(10)
         messages.reverse() #reverse the messages to get the newer
 
