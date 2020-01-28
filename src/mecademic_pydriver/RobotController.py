@@ -2,7 +2,7 @@ import socket
 import time
 
 from mecademic_pydriver.MecademicLog import MecademicLog
-from mecademic_pydriver.parsingLib import payload2tuple, build_command
+from mecademic_pydriver.parsingLib import payload2tuple, build_command, status_robot_list2dict
 
 class RobotController:
     """Class for the Mecademic Robot allowing for communication and control of the 
@@ -275,15 +275,7 @@ class RobotController:
             print("[WARNING] RobotController::GetStatusRobot response not received, retry...")
             return self.GetStatusRobot(retry=False)
         status = payload2tuple(msg[1], output_type = int)
-        return {
-            "as": status[0],
-            "hs": status[1],
-            "sm": status[2],
-            "es": status[3],
-            "pm": status[4],
-            "eob": status[5],
-            "eom": status[6]
-        }
+        return status_robot_list2dict(status)
 
     def Home(self):
         """

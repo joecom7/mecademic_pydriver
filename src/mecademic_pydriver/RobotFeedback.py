@@ -1,20 +1,21 @@
 import socket
 
 from mecademic_pydriver.MessageReceiver import MessageReceiver
-from mecademic_pydriver.parsingLib import extract_payload_from_messages, payload2tuple
+from mecademic_pydriver.parsingLib import extract_payload_from_messages, payload2tuple, status_robot_list2dict
 
 class RobotFeedback:
     """Class for the Mecademic Robot allowing for live positional 
     feedback of the Mecademic Robot 
 
+    Joint Angles, angles in degrees | [theta_1, theta_2, ... theta_n]
+    Cartesian coordinates, distances in mm, angles in degrees | [x,y,z,alpha,beta,gamma]
+
     Attributes:
         Address: IP Address
         socket: socket connecting to physical Mecademic Robot
-        joints: tuple of the joint angles in degrees
-        pose: tuple of the cartesian values in mm and degrees
     """
 
-    def __init__(self, address, socket_timeout=0.1):
+    def __init__(self, address, socket_timeout=0.1, firmware_version_8=True):
         """Constructor for an instance of the Class Mecademic Robot 
 
         :param address: The IP address associated to the Mecademic Robot
@@ -28,11 +29,17 @@ class RobotFeedback:
         self.message_receiver = None
         self.message_terminator = "\x00"
 
-        self.joints_fb_code = "2102"
-        self.pose_fb_code = "2103"
-
-        self.joints = ()    #Joint Angles, angles in degrees | [theta_1, theta_2, ... theta_n]
-        self.pose = () #Cartesian coordinates, distances in mm, angles in degrees | [x,y,z,alpha,beta,gamma]
+        if firmware_version_8:
+            #8.0.8.1-beta
+            print("RobotFeedback: Selected Version 8 - Beta")
+            self.joints_fb_code = "2026"
+            self.pose_fb_code = "2027"
+            self.status_robot_fb_code = "2007"
+        else:
+            #7.0.6
+            self.joints_fb_code = "2102"
+            self.pose_fb_code = "2103"
+            self.status_robot_fb_code = "2007" #never received in version 7
 
     def connect(self):
         """Connects Mecademic Robot object communication to the physical Mecademic Robot
@@ -62,7 +69,7 @@ class RobotFeedback:
         """
         Receives message from the Mecademic Robot and 
         saves the values in appropriate variables
-        return (joints, pose)
+        return (joints,pose,status_robot)
         wait_for_new_messages : bool (Default True)
             if wait for new messages
         """
@@ -73,34 +80,56 @@ class RobotFeedback:
         if wait_for_new_messages:
             self.message_receiver.wait_for_new_messages(timeout)
         messages = self.message_receiver.get_last_messages(10)
-        messages.reverse() #reverse the messages to get the newer
 
+        joints = None
+        pose = None
+        robot_status = None
         if messages:
-            self.set_joints_from_messages(messages)
-            self.set_pose_from_messages(messages)
+            messages.reverse() #reverse the messages to get the newer
+            joints = self.set_joints_from_messages(messages)
+            pose = self.set_pose_from_messages(messages)
+            robot_status = self.set_status_robot_from_messages(messages)
 
-        return self.joints, self.pose
+        return joints, pose, robot_status
 
     def set_joints_from_messages(self, messages):
         """
         set joints from message list
         set the joints using the first occurance in messages
         """
-        self.joints = payload2tuple(
-            extract_payload_from_messages(
+        joints_payload = extract_payload_from_messages(
                 self.joints_fb_code, 
                 messages
             )
-        )
+        if joints_payload:
+            return payload2tuple(joints_payload)
+        else:
+            return None
 
     def set_pose_from_messages(self, messages):
         """
         set pose from message list
         set the pose using the first occurance in messages
         """
-        self.pose = payload2tuple(
-            extract_payload_from_messages(
+        pose_payload = extract_payload_from_messages(
                 self.pose_fb_code, 
                 messages
             )
-        )
+        if pose_payload:
+            return payload2tuple(pose_payload)
+        return None
+
+    def set_status_robot_from_messages(self, messages):
+        """
+        set status robot from message list
+        set the status robot using the first occurance in messages
+        """
+        pass
+        status_robot_payload = extract_payload_from_messages(
+                self.status_robot_fb_code, 
+                messages
+            )
+        if status_robot_payload:
+            return status_robot_list2dict(payload2tuple(status_robot_payload))
+        else:
+            return None

@@ -72,3 +72,17 @@ def build_command(cmd, arg_list = []):
                 command = command+str(arg_list[index])+','
             command = command+str(arg_list[-1])+')'
         return command
+
+def status_robot_list2dict(status_robot_payload):
+    """
+    convert a status_robot list-like to a dictionary
+    """
+    return {
+            "as": status_robot_payload[0],
+            "hs": status_robot_payload[1],
+            "sm": status_robot_payload[2],
+            "es": status_robot_payload[3],
+            "pm": status_robot_payload[4],
+            "eob": status_robot_payload[5],
+            "eom": status_robot_payload[6]
+        }
