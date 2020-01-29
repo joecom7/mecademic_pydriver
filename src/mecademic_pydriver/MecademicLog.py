@@ -101,7 +101,7 @@ class MecademicLog:
             else:
                 self.log.reverse()
                 self.log.remove(message)
-                self.log.reverse
+                self.log.reverse()
         return message
     
     def remove_all_code(self, code):
