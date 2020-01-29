@@ -20,6 +20,7 @@ class RobotController:
         address, 
         socket_timeout=0.1,
         motion_commands_response_timeout=0.001,
+        request_commands_response_timeout=1.0,
         log_size=100, 
         on_new_messages_received=None
         ):
@@ -34,6 +35,7 @@ class RobotController:
         self.socket_timeout = socket_timeout
 
         self.motion_commands_response_timeout = motion_commands_response_timeout
+        self.request_commands_response_timeout = request_commands_response_timeout
 
         self.mecademic_log = None
         self.log_size = log_size
@@ -87,16 +89,17 @@ class RobotController:
         If the code is not present il the log: raise an exception
         codes: a list of codes to check
         method_str : the method that generated the error
+        return: the first msg found, [] if codes is empty
         """
         if not codes:
-            return
+            return []
         for code in codes:
             msg = self.mecademic_log.get_last_code_occurance(
                                 code, 
                                 delete_others = True
                                 )
             if msg:
-                return
+                return msg
         raise RuntimeError("RobotController::{} code {} not found in log".format(method_str,codes))
 
     def handle_specific_error(self, code, method_str="handle_specific_error"):
@@ -160,12 +163,18 @@ class RobotController:
             If true - raises an error on any error (code starts with 1)
         wait_for_new_messages and  timeout: are passed to self.mecademic_log.update_log
             meaning: if wait for new messages and the waiting timeout in seconds (None=Forever 0=poll)
+        return: first message received from responses_code, [] if responses_code is empty
         """
 
         #Update Log in Polling mode, remove all message with code in [codes_to_remove_from_log]
         #This is useful to forget errors that will be cleared by this command
         self.mecademic_log.update_log(wait_for_new_messages=False)
         for code in codes_to_remove_from_log:
+            self.mecademic_log.remove_all_code(code)
+        
+        #remove all messages with code in [responses_code]
+        #to avoid to read all responses
+        for code in responses_code:
             self.mecademic_log.remove_all_code(code)
 
         #send the command
@@ -181,36 +190,71 @@ class RobotController:
             self.handle_errors(method_str=method_str)
         #check the response
         try:
-            self.check_response(responses_code, method_str=method_str)
+            res = self.check_response(responses_code, method_str=method_str)
         except RuntimeError:
             #try to receive again
-            print("[WARNING] RobotController::send_command_handled response not received, retry...")
+            print("[WARNING] RobotController::send_command_handled cmd={} response not received, retry...".format(cmd))
+            #update the log
             self.mecademic_log.update_log(wait_for_new_messages=wait_for_new_messages, timeout=timeout)
-            self.handle_errors(method_str=method_str)
-            self.check_response(responses_code, method_str=method_str)
+            #check command specific errors
+            for code in errors_code:
+                self.handle_specific_error(code, method_str=method_str)
+            #check generic errors
+            if handle_all_errors:
+                self.handle_errors(method_str=method_str)
+            #check the response
+            res = self.check_response(responses_code, method_str=method_str)
+        return res
 
     ################################################
     ###     REQUEST COMMANDS                    ####
     ################################################
 
+    def send_request_command(
+                            self,
+                            cmd,
+                            codes_to_remove_from_log=[],
+                            errors_code=[],
+                            responses_code=[],
+                            handle_all_errors=True,
+                            wait_for_new_messages=True, timeout=None
+                            ):
+        """
+        Generic interface to send request commands
+        parameters are the same of send_command_handled 
+        but if timeout=None it will be defaulted to request_commands_response_timeout
+        """
+        if not timeout:
+            timeout = self.request_commands_response_timeout
+        return self.send_command_handled(
+                            cmd,
+                            method_str=cmd,
+                            codes_to_remove_from_log=codes_to_remove_from_log,
+                            errors_code=errors_code,
+                            responses_code=responses_code,
+                            handle_all_errors=handle_all_errors,
+                            wait_for_new_messages=wait_for_new_messages,
+                            timeout=timeout
+                            )
+
     def ActivateRobot(self):
         """
         Call the ActivateRobot request command
         """
-        self.send_command_handled(
+        return self.send_request_command(
             "ActivateRobot",
-            method_str="ActivateRobot",
             codes_to_remove_from_log=["1005"],
             errors_code=["1013"],
-            responses_code=["2000","2001"])
+            responses_code=["2000","2001"],
+            timeout=10.0
+            )
 
     def ClearMotion(self):
         """
         Call the ClearMotion request command
         """
-        self.send_command_handled(
+        return self.send_request_command(
             "ClearMotion",
-            method_str="ClearMotion",
             errors_code=[],
             responses_code=["2044"])
 
@@ -218,36 +262,28 @@ class RobotController:
         """
         Call the DeactivateRobot request command
         """
-        self.send_command_handled(
+        return self.send_request_command(
             "DeactivateRobot",
-            method_str="DeactivateRobot",
             codes_to_remove_from_log=["1005"],
             errors_code=[],
-            responses_code=["2004"])
+            responses_code=["2004"],
+            timeout=10.0
+            )
 
-    def GetConf(self, retry=True):
+    def GetConf(self):
         """
         Call the GetConf request command
         retry : bool (Default True)
             If no response, Retry one time
         Return a dictionary {'c1':c1,'c3':c3,'c5':c5}
         """
-        #not handle any error!
-        #send command
-        self.send_string_command("GetConf")
-        #update the log
-        self.mecademic_log.update_log(wait_for_new_messages=True)
-
-        self.handle_errors(method_str="GetConf")
-
-        msg = self.mecademic_log.get_last_code_occurance(
-                                "2029", 
-                                delete_others = True
-                                )
-        if (not msg) and retry:
-            print("[WARNING] RobotController::GetConf response not received, retry...")
-            return self.GetConf(retry=False)
-        conf = payload2tuple(msg[1], output_type = int)
+        res = self.send_request_command(
+            "GetConf",
+            codes_to_remove_from_log=[],
+            errors_code=[],
+            responses_code=["2029"]
+            )
+        conf = payload2tuple(res[1], output_type = int)
         return {
             "c1": conf[0],
             "c3": conf[1],
@@ -261,41 +297,34 @@ class RobotController:
             If no response, Retry one time
         Return a dictionary {'as':as,'hs':hs, ... , 'eom':eom}
         """
-        #not handle any error!
-        #send command
-        self.send_string_command("GetStatusRobot")
-        #update the log
-        self.mecademic_log.update_log(wait_for_new_messages=True)
-
-        msg = self.mecademic_log.get_last_code_occurance(
-                                "2007", 
-                                delete_others = True
-                                )
-        if (not msg) and retry:
-            print("[WARNING] RobotController::GetStatusRobot response not received, retry...")
-            return self.GetStatusRobot(retry=False)
-        status = payload2tuple(msg[1], output_type = int)
+        res = self.send_request_command(
+            "GetStatusRobot",
+            codes_to_remove_from_log=[],
+            errors_code=[],
+            responses_code=["2007"],
+            handle_all_errors = False #not handle any error!
+            )
+        status = payload2tuple(res[1], output_type = int)
         return status_robot_list2dict(status)
 
     def Home(self):
         """
         Call the Home request command
         """
-        self.send_command_handled(
+        self.send_request_command(
             "Home",
-            method_str="Home",
             codes_to_remove_from_log=["1006"],
             errors_code=["1014"],
-            responses_code=["2002","2003"])
+            responses_code=["2002","2003"],
+            timeout=10.0)
 
     def ResetError(self):
         """
         Call the ResetError request command
         """
         #remove all errors from the log then call ResetError command
-        self.send_command_handled(
+        self.send_request_command(
             "ResetError",
-            method_str="ResetError",
             codes_to_remove_from_log=["1"],
             errors_code=["1025"],
             handle_all_errors=False,
@@ -307,9 +336,8 @@ class RobotController:
         """
         Call the ResumeMotion request command
         """
-        self.send_command_handled(
+        self.send_request_command(
             "ResumeMotion",
-            method_str="ResumeMotion",
             errors_code=[],
             responses_code=["2043"])
 
@@ -326,9 +354,8 @@ class RobotController:
             raise ValueError("RobotController::SetEOB invalid argument e={}".format(e))
 
         cmd = build_command("SetEOB",[e])
-        self.send_command_handled(
+        self.send_request_command(
             cmd,
-            method_str="cmd",
             errors_code=[],
             responses_code=responses_code)
 
@@ -345,11 +372,23 @@ class RobotController:
             raise ValueError("RobotController::SetEOM invalid argument e={}".format(e))
 
         cmd = build_command("SetEOM",[e])
-        self.send_command_handled(
+        self.send_request_command(
             cmd,
-            method_str="cmd",
             errors_code=[],
             responses_code=responses_code)
+
+    def SetMonitoringInterval(self,t):
+        """
+        Call the SetMonitoringInterval request command
+        """
+        if not (t>=0.001 and t<=1):
+            raise ValueError("RobotController::SetMonitoringInterval invalid value t={}".format(t))
+        cmd = build_command("SetMonitoringInterval",[t])
+        self.send_request_command(
+            cmd,
+            errors_code=[],
+            responses_code=[],
+            wait_for_new_messages=False)
 
     ################################################
     ###     MOTION COMMANDS                    #####
