@@ -1,5 +1,6 @@
 import socket
 import time
+import select
 
 from mecademic_pydriver.MecademicLog import MecademicLog
 from mecademic_pydriver.parsingLib import payload2tuple, build_command, status_robot_list2dict
@@ -139,7 +140,13 @@ class RobotController:
         This function does not check if robot is in error
         """
         command = cmd + '\0'
+        _, wlist, _ = select.select([], [self.socket], [])
+        if not wlist:
+            print('wlist empty')
         self.socket.sendall(command.encode("ascii"))
+        _, wlist, _ = select.select([], [self.socket], [])
+        if not wlist:
+            print('wlist empty')
 
     def send_command_handled(
                             self,
@@ -394,6 +401,12 @@ class RobotController:
     ###     MOTION COMMANDS                    #####
     ################################################
 
+    @staticmethod
+    def patch_vel_commands():
+        """
+        """
+        time.sleep(1.0/27.0 - 0.0012)
+
     def update_log_for_motion_commands(self):
         """
         Update the log for the motion commands in a non bloking fashion
@@ -420,6 +433,7 @@ class RobotController:
         if not len(joints_vel)==6:
             raise ValueError("RobotController::MoveJointsVel Meca500 has 6 joints {} provided".format(len(joints_vel)))
         self.send_string_command(build_command("MoveJointsVel",joints_vel))
+        RobotController.patch_vel_commands() # PATCH
         self.update_log_for_motion_commands()
 
     def MoveLin(self, position, orientation):
@@ -471,6 +485,20 @@ class RobotController:
         args = list(position)
         args.extend(orientation)
         self.send_string_command(build_command("MoveLinRelWRF",args))
+        self.update_log_for_motion_commands()
+
+    def MoveLinVelTRF(self, p_dot, w):
+        """
+        """
+        if not len(p_dot)==3:
+            raise ValueError("RobotController::MoveLin p_dot must have len=3, {} provided".format(len(p_dot)))
+        if not len(w)==3:
+            raise ValueError("RobotController::MoveLin w must have len=3, {} provided".format(len(w)))
+        
+        args = list(p_dot)
+        args.extend(w)
+        self.send_string_command(build_command("MoveLinVelTRF",args))
+        RobotController.patch_vel_commands() # PATCH
         self.update_log_for_motion_commands()
 
     def MovePose(self, position, orientation):
