@@ -1,4 +1,5 @@
 import select
+from requests import ConnectionError
 
 
 class MessageReceiver:
