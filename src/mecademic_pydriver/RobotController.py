@@ -410,7 +410,17 @@ class RobotController:
             raise ValueError("RobotController::MoveJoints Meca500 has 6 joints {} provided".format(len(joints)))
         self.send_string_command(build_command("MoveJoints",joints))
         self.update_log_for_motion_commands()
-        
+    
+    def MoveJointsVel(self, joints_vel):
+        """
+        Call the MoveJointsVel Motion Command
+        joints: joints_vel list [A1,A2,...,A6] in [deg/s]
+        this methods does not check the response
+        """
+        if not len(joints_vel)==6:
+            raise ValueError("RobotController::MoveJointsVel Meca500 has 6 joints {} provided".format(len(joints_vel)))
+        self.send_string_command(build_command("MoveJointsVel",joints_vel))
+        self.update_log_for_motion_commands()
 
     def MoveLin(self, position, orientation):
         """
@@ -597,4 +607,15 @@ class RobotController:
         args.extend(orientation)
         self.send_string_command(build_command("SetWRF",args))
         self.update_log_for_motion_commands()
+
+    def SetVelTimeout(self, t):
+        """
+        Call the setVelTimeout Motion Command
+        this methods does not check the response
+        """
+        if not (t>=0.001 and t<=1):
+            raise ValueError("RobotController::setVelTimeout invalid value t={}".format(t))
+        self.send_string_command(build_command("setVelTimeout",[t]))
+        self.update_log_for_motion_commands()
+
 
