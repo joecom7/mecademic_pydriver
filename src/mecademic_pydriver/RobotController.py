@@ -404,8 +404,9 @@ class RobotController:
     @staticmethod
     def patch_vel_commands():
         """
+        This patch is to avoid the high freq bug of firmware v8.0.8
         """
-        time.sleep(1.0/27.0 - 0.0012)
+        time.sleep(1.0/26.0 - 0.0012)
 
     def update_log_for_motion_commands(self):
         """
@@ -489,15 +490,37 @@ class RobotController:
 
     def MoveLinVelTRF(self, p_dot, w):
         """
+        Call the MoveLinVelTRF Motion Command
+        p_dot: desired transl velocity [x,y,z] in [mm/s]
+        w: desired euler angular velocity w in [deg/s]
+        this methods does not check the response
         """
         if not len(p_dot)==3:
-            raise ValueError("RobotController::MoveLin p_dot must have len=3, {} provided".format(len(p_dot)))
+            raise ValueError("RobotController::MoveLinVelTRF p_dot must have len=3, {} provided".format(len(p_dot)))
         if not len(w)==3:
-            raise ValueError("RobotController::MoveLin w must have len=3, {} provided".format(len(w)))
+            raise ValueError("RobotController::MoveLinVelTRF w must have len=3, {} provided".format(len(w)))
         
         args = list(p_dot)
         args.extend(w)
         self.send_string_command(build_command("MoveLinVelTRF",args))
+        RobotController.patch_vel_commands() # PATCH
+        self.update_log_for_motion_commands()
+
+    def MoveLinVelWRF(self, p_dot, w):
+        """
+        Call the MoveLinVelWRF Motion Command
+        p_dot: desired transl velocity [x,y,z] in [mm/s]
+        w: desired euler angular velocity w in [deg/s]
+        this methods does not check the response
+        """
+        if not len(p_dot)==3:
+            raise ValueError("RobotController::MoveLinVelWRF p_dot must have len=3, {} provided".format(len(p_dot)))
+        if not len(w)==3:
+            raise ValueError("RobotController::MoveLinVelWRF w must have len=3, {} provided".format(len(w)))
+        
+        args = list(p_dot)
+        args.extend(w)
+        self.send_string_command(build_command("MoveLinVelWRF",args))
         RobotController.patch_vel_commands() # PATCH
         self.update_log_for_motion_commands()
 
@@ -644,6 +667,7 @@ class RobotController:
         if not (t>=0.001 and t<=1):
             raise ValueError("RobotController::setVelTimeout invalid value t={}".format(t))
         self.send_string_command(build_command("setVelTimeout",[t]))
+        RobotController.patch_vel_commands() # PATCH
         self.update_log_for_motion_commands()
 
 
