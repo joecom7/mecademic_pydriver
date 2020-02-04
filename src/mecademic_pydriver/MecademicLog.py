@@ -4,6 +4,7 @@ from collections import deque
 from mecademic_pydriver.MessageReceiver import MessageReceiver
 from mecademic_pydriver.parsingLib import messages2codepayload
 
+
 class MecademicLog:
     """
     Class that represents the log of all messages received from mecademic robot
@@ -12,7 +13,7 @@ class MecademicLog:
         log: a deque of last logs received each one is a tuple (code, payload)
         log_size: maximum log size
     """
-    
+
     def __init__(self, socket, log_size=100, on_new_messages_received=None):
         """
         Constructor
@@ -23,9 +24,8 @@ class MecademicLog:
                                     usefull to intercept new messages without remove them from the log
         """
         self.message_receiver = MessageReceiver(socket, "\x00")
-        self.log = deque([],log_size)
+        self.log = deque([], log_size)
         self.on_new_messages_received_cb = on_new_messages_received
-
 
     def get_log(self):
         """
@@ -43,14 +43,14 @@ class MecademicLog:
         if wait_for_new_messages:
             self.message_receiver.wait_for_new_messages(timeout)
 
-        messages = messages2codepayload( 
-                    self.message_receiver.get_last_messages(
-                        self.log.maxlen
-                        )
-                    )
-        
+        messages = messages2codepayload(
+            self.message_receiver.get_last_messages(
+                self.log.maxlen
+            )
+        )
+
         if messages:
-            #call the callbk on new messages
+            # call the callbk on new messages
             if self.on_new_messages_received_cb:
                 self.on_new_messages_received_cb(messages)
 
@@ -78,7 +78,7 @@ class MecademicLog:
         else:
             return None
 
-    def get_last_code_occurance(self, code, delete_others = False):
+    def get_last_code_occurance(self, code, delete_others=False):
         """
         Get message corresponding to the last occurence of the corresponding code
         Remove the message from the log
@@ -94,7 +94,7 @@ class MecademicLog:
             if this_message[0].startswith(code):
                 message = this_message
                 break
-        #if found remove it from log
+        # if found remove it from log
         if message:
             if delete_others:
                 self.remove_all_code(code)
@@ -103,7 +103,7 @@ class MecademicLog:
                 self.log.remove(message)
                 self.log.reverse()
         return message
-    
+
     def remove_all_code(self, code):
         """
         Remove all occurences of code in the log
@@ -115,7 +115,7 @@ class MecademicLog:
         for message in messages_to_remove:
             self.log.remove(message)
 
-    def get_all_messages(self,code):
+    def get_all_messages(self, code):
         """
         Get all messages from the Log
         Clear the log

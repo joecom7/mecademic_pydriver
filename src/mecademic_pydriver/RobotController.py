@@ -5,6 +5,7 @@ import select
 from mecademic_pydriver.MecademicLog import MecademicLog
 from mecademic_pydriver.parsingLib import payload2tuple, build_command, status_robot_list2dict
 
+
 class RobotController:
     """Class for the Mecademic Robot allowing for communication and control of the 
     Mecademic Robot with all of its features available
@@ -16,15 +17,16 @@ class RobotController:
         End of Movement: Setting for EOM reply
         Error: Error Status of the Mecademic Robot
     """
+
     def __init__(
-        self, 
-        address, 
+        self,
+        address,
         socket_timeout=0.1,
         motion_commands_response_timeout=0.001,
         request_commands_response_timeout=1.0,
-        log_size=100, 
+        log_size=100,
         on_new_messages_received=None
-        ):
+    ):
         """Constructor for an instance of the Class Mecademic Robot 
 
         :param address: The IP address associated to the Mecademic Robot
@@ -50,31 +52,31 @@ class RobotController:
         """
 
         if self.socket:
-            return #already conencted
+            return  # already conencted
 
-        #create a socket and connect
+        # create a socket and connect
         self.socket = socket.socket()
         self.socket.settimeout(self.socket_timeout)
         self.socket.connect((self.address, self.port))
         self.socket.settimeout(self.socket_timeout)
 
-        #check that socket is not connected to nothing
-        if self.socket is None:          
-            raise RuntimeError( "RobotFeedback::Connect - socket is None" )
+        # check that socket is not connected to nothing
+        if self.socket is None:
+            raise RuntimeError("RobotFeedback::Connect - socket is None")
 
         self.mecademic_log = MecademicLog(
-                                self.socket, 
-                                log_size=self.log_size, 
-                                on_new_messages_received=self.on_new_messages_received
-                                )
+            self.socket,
+            log_size=self.log_size,
+            on_new_messages_received=self.on_new_messages_received
+        )
 
         self.mecademic_log.update_log(wait_for_new_messages=True)
 
-        #check if error 3001
+        # check if error 3001
         self.handle_specific_error("3001", method_str="connect")
         self.handle_errors(method_str="connect")
 
-        #check if message 3000
+        # check if message 3000
         self.check_response(["3000"], method_str="check_reconnectsponse")
 
     def disconnect(self):
@@ -96,12 +98,13 @@ class RobotController:
             return []
         for code in codes:
             msg = self.mecademic_log.get_last_code_occurance(
-                                code, 
-                                delete_others = True
-                                )
+                code,
+                delete_others=True
+            )
             if msg:
                 return msg
-        raise RuntimeError("RobotController::{} code {} not found in log".format(method_str,codes))
+        raise RuntimeError(
+            "RobotController::{} code {} not found in log".format(method_str, codes))
 
     def handle_specific_error(self, code, method_str="handle_specific_error"):
         """
@@ -109,13 +112,14 @@ class RobotController:
         method_str : the method that generated the error
         """
         error_msg = self.mecademic_log.get_last_code_occurance(
-                            code, 
-                            delete_others = True
-                            )
+            code,
+            delete_others=True
+        )
         if error_msg:
-            raise RuntimeError("RobotController::{} {}".format(method_str,error_msg))
+            raise RuntimeError(
+                "RobotController::{} {}".format(method_str, error_msg))
 
-    def handle_errors(self, method_str="handle_errors", delete_others = False):
+    def handle_errors(self, method_str="handle_errors", delete_others=False):
         """
         Generic error handler
         Check if a error code is present in the log
@@ -124,11 +128,12 @@ class RobotController:
             if True, delete all errors from the log
         """
         error_msg = self.mecademic_log.get_last_code_occurance(
-                            "1", # error code starts with 1
-                            delete_others = False
-                            )
+            "1",  # error code starts with 1
+            delete_others=False
+        )
         if error_msg:
-            raise RuntimeError("RobotController::{} {}".format(method_str,error_msg))
+            raise RuntimeError(
+                "RobotController::{} {}".format(method_str, error_msg))
 
     def send_string_command(self, cmd):
         """
@@ -149,15 +154,15 @@ class RobotController:
             print('wlist empty')
 
     def send_command_handled(
-                            self,
-                            cmd,
-                            method_str="send_command_handled",
-                            codes_to_remove_from_log=[],
-                            errors_code=[],
-                            responses_code=[],
-                            handle_all_errors=True,
-                            wait_for_new_messages=True, timeout=None
-                            ):
+        self,
+        cmd,
+        method_str="send_command_handled",
+        codes_to_remove_from_log=[],
+        errors_code=[],
+        responses_code=[],
+        handle_all_errors=True,
+        wait_for_new_messages=True, timeout=None
+    ):
         """
         Send a command and handle errors
         codes_to_remove_from_log: [str]
@@ -173,43 +178,46 @@ class RobotController:
         return: first message received from responses_code, [] if responses_code is empty
         """
 
-        #Update Log in Polling mode, remove all message with code in [codes_to_remove_from_log]
-        #This is useful to forget errors that will be cleared by this command
+        # Update Log in Polling mode, remove all message with code in [codes_to_remove_from_log]
+        # This is useful to forget errors that will be cleared by this command
         self.mecademic_log.update_log(wait_for_new_messages=False)
         for code in codes_to_remove_from_log:
             self.mecademic_log.remove_all_code(code)
-        
-        #remove all messages with code in [responses_code]
-        #to avoid to read all responses
+
+        # remove all messages with code in [responses_code]
+        # to avoid to read all responses
         for code in responses_code:
             self.mecademic_log.remove_all_code(code)
 
-        #send the command
+        # send the command
         self.send_string_command(cmd)
 
-        #update the log
-        self.mecademic_log.update_log(wait_for_new_messages=wait_for_new_messages, timeout=timeout)
-        #check command specific errors
+        # update the log
+        self.mecademic_log.update_log(
+            wait_for_new_messages=wait_for_new_messages, timeout=timeout)
+        # check command specific errors
         for code in errors_code:
             self.handle_specific_error(code, method_str=method_str)
-        #check generic errors
+        # check generic errors
         if handle_all_errors:
             self.handle_errors(method_str=method_str)
-        #check the response
+        # check the response
         try:
             res = self.check_response(responses_code, method_str=method_str)
         except RuntimeError:
-            #try to receive again
-            print("[WARNING] RobotController::send_command_handled cmd={} response not received, retry...".format(cmd))
-            #update the log
-            self.mecademic_log.update_log(wait_for_new_messages=wait_for_new_messages, timeout=timeout)
-            #check command specific errors
+            # try to receive again
+            print(
+                "[WARNING] RobotController::send_command_handled cmd={} response not received, retry...".format(cmd))
+            # update the log
+            self.mecademic_log.update_log(
+                wait_for_new_messages=wait_for_new_messages, timeout=timeout)
+            # check command specific errors
             for code in errors_code:
                 self.handle_specific_error(code, method_str=method_str)
-            #check generic errors
+            # check generic errors
             if handle_all_errors:
                 self.handle_errors(method_str=method_str)
-            #check the response
+            # check the response
             res = self.check_response(responses_code, method_str=method_str)
         return res
 
@@ -218,14 +226,14 @@ class RobotController:
     ################################################
 
     def send_request_command(
-                            self,
-                            cmd,
-                            codes_to_remove_from_log=[],
-                            errors_code=[],
-                            responses_code=[],
-                            handle_all_errors=True,
-                            wait_for_new_messages=True, timeout=None
-                            ):
+        self,
+        cmd,
+        codes_to_remove_from_log=[],
+        errors_code=[],
+        responses_code=[],
+        handle_all_errors=True,
+        wait_for_new_messages=True, timeout=None
+    ):
         """
         Generic interface to send request commands
         parameters are the same of send_command_handled 
@@ -234,15 +242,15 @@ class RobotController:
         if not timeout:
             timeout = self.request_commands_response_timeout
         return self.send_command_handled(
-                            cmd,
-                            method_str=cmd,
-                            codes_to_remove_from_log=codes_to_remove_from_log,
-                            errors_code=errors_code,
-                            responses_code=responses_code,
-                            handle_all_errors=handle_all_errors,
-                            wait_for_new_messages=wait_for_new_messages,
-                            timeout=timeout
-                            )
+            cmd,
+            method_str=cmd,
+            codes_to_remove_from_log=codes_to_remove_from_log,
+            errors_code=errors_code,
+            responses_code=responses_code,
+            handle_all_errors=handle_all_errors,
+            wait_for_new_messages=wait_for_new_messages,
+            timeout=timeout
+        )
 
     def ActivateRobot(self):
         """
@@ -252,9 +260,9 @@ class RobotController:
             "ActivateRobot",
             codes_to_remove_from_log=["1005"],
             errors_code=["1013"],
-            responses_code=["2000","2001"],
+            responses_code=["2000", "2001"],
             timeout=10.0
-            )
+        )
 
     def ClearMotion(self):
         """
@@ -275,7 +283,7 @@ class RobotController:
             errors_code=[],
             responses_code=["2004"],
             timeout=10.0
-            )
+        )
 
     def GetConf(self):
         """
@@ -289,8 +297,8 @@ class RobotController:
             codes_to_remove_from_log=[],
             errors_code=[],
             responses_code=["2029"]
-            )
-        conf = payload2tuple(res[1], output_type = int)
+        )
+        conf = payload2tuple(res[1], output_type=int)
         return {
             "c1": conf[0],
             "c3": conf[1],
@@ -309,9 +317,9 @@ class RobotController:
             codes_to_remove_from_log=[],
             errors_code=[],
             responses_code=["2007"],
-            handle_all_errors = False #not handle any error!
-            )
-        status = payload2tuple(res[1], output_type = int)
+            handle_all_errors=False  # not handle any error!
+        )
+        status = payload2tuple(res[1], output_type=int)
         return status_robot_list2dict(status)
 
     def Home(self):
@@ -322,20 +330,20 @@ class RobotController:
             "Home",
             codes_to_remove_from_log=["1006"],
             errors_code=["1014"],
-            responses_code=["2002","2003"],
+            responses_code=["2002", "2003"],
             timeout=10.0)
 
     def ResetError(self):
         """
         Call the ResetError request command
         """
-        #remove all errors from the log then call ResetError command
+        # remove all errors from the log then call ResetError command
         self.send_request_command(
             "ResetError",
             codes_to_remove_from_log=["1"],
             errors_code=["1025"],
             handle_all_errors=False,
-            responses_code=["2005","2006"])
+            responses_code=["2005", "2006"])
         self.mecademic_log.update_log(wait_for_new_messages=False)
         self.mecademic_log.remove_all_code("1")
 
@@ -348,49 +356,52 @@ class RobotController:
             errors_code=[],
             responses_code=["2043"])
 
-    def SetEOB(self,e):
+    def SetEOB(self, e):
         """
         Call the SetEOB request command
         """
-        responses_code=[]
+        responses_code = []
         if e == 0:
             responses_code = ["2055"]
         elif e == 1:
             responses_code = ["2054"]
         else:
-            raise ValueError("RobotController::SetEOB invalid argument e={}".format(e))
+            raise ValueError(
+                "RobotController::SetEOB invalid argument e={}".format(e))
 
-        cmd = build_command("SetEOB",[e])
+        cmd = build_command("SetEOB", [e])
         self.send_request_command(
             cmd,
             errors_code=[],
             responses_code=responses_code)
 
-    def SetEOM(self,e):
+    def SetEOM(self, e):
         """
         Call the SetEOM request command
         """
-        responses_code=[]
+        responses_code = []
         if e == 0:
             responses_code = ["2053"]
         elif e == 1:
             responses_code = ["2052"]
         else:
-            raise ValueError("RobotController::SetEOM invalid argument e={}".format(e))
+            raise ValueError(
+                "RobotController::SetEOM invalid argument e={}".format(e))
 
-        cmd = build_command("SetEOM",[e])
+        cmd = build_command("SetEOM", [e])
         self.send_request_command(
             cmd,
             errors_code=[],
             responses_code=responses_code)
 
-    def SetMonitoringInterval(self,t):
+    def SetMonitoringInterval(self, t):
         """
         Call the SetMonitoringInterval request command
         """
-        if not (t>=0.001 and t<=1):
-            raise ValueError("RobotController::SetMonitoringInterval invalid value t={}".format(t))
-        cmd = build_command("SetMonitoringInterval",[t])
+        if not (t >= 0.001 and t <= 1):
+            raise ValueError(
+                "RobotController::SetMonitoringInterval invalid value t={}".format(t))
+        cmd = build_command("SetMonitoringInterval", [t])
         self.send_request_command(
             cmd,
             errors_code=[],
@@ -412,7 +423,8 @@ class RobotController:
         """
         Update the log for the motion commands in a non bloking fashion
         """
-        self.mecademic_log.update_log(wait_for_new_messages=True,timeout=self.motion_commands_response_timeout)
+        self.mecademic_log.update_log(
+            wait_for_new_messages=True, timeout=self.motion_commands_response_timeout)
 
     def MoveJoints(self, joints):
         """
@@ -420,21 +432,23 @@ class RobotController:
         joints: joints list [A1,A2,...,A6] in [deg]
         this methods does not check the response
         """
-        if not len(joints)==6:
-            raise ValueError("RobotController::MoveJoints Meca500 has 6 joints {} provided".format(len(joints)))
-        self.send_string_command(build_command("MoveJoints",joints))
+        if not len(joints) == 6:
+            raise ValueError(
+                "RobotController::MoveJoints Meca500 has 6 joints {} provided".format(len(joints)))
+        self.send_string_command(build_command("MoveJoints", joints))
         self.update_log_for_motion_commands()
-    
+
     def MoveJointsVel(self, joints_vel):
         """
         Call the MoveJointsVel Motion Command
         joints: joints_vel list [A1,A2,...,A6] in [deg/s]
         this methods does not check the response
         """
-        if not len(joints_vel)==6:
-            raise ValueError("RobotController::MoveJointsVel Meca500 has 6 joints {} provided".format(len(joints_vel)))
-        self.send_string_command(build_command("MoveJointsVel",joints_vel))
-        RobotController.patch_vel_commands() # PATCH
+        if not len(joints_vel) == 6:
+            raise ValueError(
+                "RobotController::MoveJointsVel Meca500 has 6 joints {} provided".format(len(joints_vel)))
+        self.send_string_command(build_command("MoveJointsVel", joints_vel))
+        RobotController.patch_vel_commands()  # PATCH
         self.update_log_for_motion_commands()
 
     def MoveLin(self, position, orientation):
@@ -444,14 +458,16 @@ class RobotController:
         orientation: desired euler angle XYZ [alpha,beta,gamma] in [deg]
         this methods does not check the response
         """
-        if not len(position)==3:
-            raise ValueError("RobotController::MoveLin position must have len=3, {} provided".format(len(position)))
-        if not len(orientation)==3:
-            raise ValueError("RobotController::MoveLin orientation must have len=3, {} provided".format(len(orientation)))
-        
+        if not len(position) == 3:
+            raise ValueError(
+                "RobotController::MoveLin position must have len=3, {} provided".format(len(position)))
+        if not len(orientation) == 3:
+            raise ValueError(
+                "RobotController::MoveLin orientation must have len=3, {} provided".format(len(orientation)))
+
         args = list(position)
         args.extend(orientation)
-        self.send_string_command(build_command("MoveLin",args))
+        self.send_string_command(build_command("MoveLin", args))
         self.update_log_for_motion_commands()
 
     def MoveLinRelTRF(self, position, orientation):
@@ -461,14 +477,16 @@ class RobotController:
         orientation: desired euler angle XYZ [alpha,beta,gamma] in [deg]
         this methods does not check the response
         """
-        if not len(position)==3:
-            raise ValueError("RobotController::MoveLinRelTRF position must have len=3, {} provided".format(len(position)))
-        if not len(orientation)==3:
-            raise ValueError("RobotController::MoveLinRelTRF orientation must have len=3, {} provided".format(len(orientation)))
-        
+        if not len(position) == 3:
+            raise ValueError(
+                "RobotController::MoveLinRelTRF position must have len=3, {} provided".format(len(position)))
+        if not len(orientation) == 3:
+            raise ValueError(
+                "RobotController::MoveLinRelTRF orientation must have len=3, {} provided".format(len(orientation)))
+
         args = list(position)
         args.extend(orientation)
-        self.send_string_command(build_command("MoveLinRelTRF",args))
+        self.send_string_command(build_command("MoveLinRelTRF", args))
         self.update_log_for_motion_commands()
 
     def MoveLinRelWRF(self, position, orientation):
@@ -478,14 +496,16 @@ class RobotController:
         orientation: desired euler angle XYZ [alpha,beta,gamma] in [deg]
         this methods does not check the response
         """
-        if not len(position)==3:
-            raise ValueError("RobotController::MoveLinRelWRF position must have len=3, {} provided".format(len(position)))
-        if not len(orientation)==3:
-            raise ValueError("RobotController::MoveLinRelWRF orientation must have len=3, {} provided".format(len(orientation)))
-        
+        if not len(position) == 3:
+            raise ValueError(
+                "RobotController::MoveLinRelWRF position must have len=3, {} provided".format(len(position)))
+        if not len(orientation) == 3:
+            raise ValueError(
+                "RobotController::MoveLinRelWRF orientation must have len=3, {} provided".format(len(orientation)))
+
         args = list(position)
         args.extend(orientation)
-        self.send_string_command(build_command("MoveLinRelWRF",args))
+        self.send_string_command(build_command("MoveLinRelWRF", args))
         self.update_log_for_motion_commands()
 
     def MoveLinVelTRF(self, p_dot, w):
@@ -495,15 +515,17 @@ class RobotController:
         w: desired euler angular velocity w in [deg/s]
         this methods does not check the response
         """
-        if not len(p_dot)==3:
-            raise ValueError("RobotController::MoveLinVelTRF p_dot must have len=3, {} provided".format(len(p_dot)))
-        if not len(w)==3:
-            raise ValueError("RobotController::MoveLinVelTRF w must have len=3, {} provided".format(len(w)))
-        
+        if not len(p_dot) == 3:
+            raise ValueError(
+                "RobotController::MoveLinVelTRF p_dot must have len=3, {} provided".format(len(p_dot)))
+        if not len(w) == 3:
+            raise ValueError(
+                "RobotController::MoveLinVelTRF w must have len=3, {} provided".format(len(w)))
+
         args = list(p_dot)
         args.extend(w)
-        self.send_string_command(build_command("MoveLinVelTRF",args))
-        RobotController.patch_vel_commands() # PATCH
+        self.send_string_command(build_command("MoveLinVelTRF", args))
+        RobotController.patch_vel_commands()  # PATCH
         self.update_log_for_motion_commands()
 
     def MoveLinVelWRF(self, p_dot, w):
@@ -513,15 +535,17 @@ class RobotController:
         w: desired euler angular velocity w in [deg/s]
         this methods does not check the response
         """
-        if not len(p_dot)==3:
-            raise ValueError("RobotController::MoveLinVelWRF p_dot must have len=3, {} provided".format(len(p_dot)))
-        if not len(w)==3:
-            raise ValueError("RobotController::MoveLinVelWRF w must have len=3, {} provided".format(len(w)))
-        
+        if not len(p_dot) == 3:
+            raise ValueError(
+                "RobotController::MoveLinVelWRF p_dot must have len=3, {} provided".format(len(p_dot)))
+        if not len(w) == 3:
+            raise ValueError(
+                "RobotController::MoveLinVelWRF w must have len=3, {} provided".format(len(w)))
+
         args = list(p_dot)
         args.extend(w)
-        self.send_string_command(build_command("MoveLinVelWRF",args))
-        RobotController.patch_vel_commands() # PATCH
+        self.send_string_command(build_command("MoveLinVelWRF", args))
+        RobotController.patch_vel_commands()  # PATCH
         self.update_log_for_motion_commands()
 
     def MovePose(self, position, orientation):
@@ -531,98 +555,110 @@ class RobotController:
         orientation: desired euler angle XYZ [alpha,beta,gamma] in [deg]
         this methods does not check the response
         """
-        if not len(position)==3:
-            raise ValueError("RobotController::MovePose position must have len=3, {} provided".format(len(position)))
-        if not len(orientation)==3:
-            raise ValueError("RobotController::MovePose orientation must have len=3, {} provided".format(len(orientation)))
-        
+        if not len(position) == 3:
+            raise ValueError(
+                "RobotController::MovePose position must have len=3, {} provided".format(len(position)))
+        if not len(orientation) == 3:
+            raise ValueError(
+                "RobotController::MovePose orientation must have len=3, {} provided".format(len(orientation)))
+
         args = list(position)
         args.extend(orientation)
-        self.send_string_command(build_command("MovePose",args))
+        self.send_string_command(build_command("MovePose", args))
         self.update_log_for_motion_commands()
 
-    def SetAutoConf(self,e):
+    def SetAutoConf(self, e):
         """
         Call the SetAutoConf Motion Command
         this methods does not check the response
         """
         if e is not 0 and e is not 1:
-            raise ValueError("RobotController::SetAutoConf invalid value e={}".format(e))
-        self.send_string_command(build_command("SetAutoConf",[e]))
+            raise ValueError(
+                "RobotController::SetAutoConf invalid value e={}".format(e))
+        self.send_string_command(build_command("SetAutoConf", [e]))
         self.update_log_for_motion_commands()
 
-    def SetBlending(self,p):
+    def SetBlending(self, p):
         """
         Call the SetBlending Motion Command
         this methods does not check the response
         """
-        if not (p>=0 and p<=100):
-            raise ValueError("RobotController::SetBlending invalid value p={}".format(p))
-        self.send_string_command(build_command("SetBlending",[p]))
+        if not (p >= 0 and p <= 100):
+            raise ValueError(
+                "RobotController::SetBlending invalid value p={}".format(p))
+        self.send_string_command(build_command("SetBlending", [p]))
         self.update_log_for_motion_commands()
 
-    def SetCartAcc(self,p):
+    def SetCartAcc(self, p):
         """
         Call the SetCartAcc Motion Command
         this methods does not check the response
         """
-        if not (p>1 and p<=100):
-            raise ValueError("RobotController::SetCartAcc invalid value p={}".format(p))
-        self.send_string_command(build_command("SetCartAcc",[p]))
+        if not (p > 1 and p <= 100):
+            raise ValueError(
+                "RobotController::SetCartAcc invalid value p={}".format(p))
+        self.send_string_command(build_command("SetCartAcc", [p]))
         self.update_log_for_motion_commands()
 
-    def SetCartAngVel(self,omega):
+    def SetCartAngVel(self, omega):
         """
         Call the SetCartAngVel Motion Command
         this methods does not check the response
         """
-        if not (omega>=0.001 and omega<=180):
-            raise ValueError("RobotController::SetCartAngVel invalid value omega={}".format(omega))
-        self.send_string_command(build_command("SetCartAngVel",[omega]))
+        if not (omega >= 0.001 and omega <= 180):
+            raise ValueError(
+                "RobotController::SetCartAngVel invalid value omega={}".format(omega))
+        self.send_string_command(build_command("SetCartAngVel", [omega]))
         self.update_log_for_motion_commands()
 
-    def SetCartLinVel(self,v):
+    def SetCartLinVel(self, v):
         """
         Call the SetCartLinVel Motion Command [mm/s]
         this methods does not check the response
         """
-        if not (v>=0.001 and v<=500): 
-            raise ValueError("RobotController::SetCartLinVel invalid value v={}".format(v))
-        self.send_string_command(build_command("SetCartLinVel",[v]))
+        if not (v >= 0.001 and v <= 500):
+            raise ValueError(
+                "RobotController::SetCartLinVel invalid value v={}".format(v))
+        self.send_string_command(build_command("SetCartLinVel", [v]))
         self.update_log_for_motion_commands()
 
-    def SetConf(self,c1,c3,c5):
+    def SetConf(self, c1, c3, c5):
         """
         Call the SetConf Motion Command
         this methods does not check the response
         """
         if c1 is not -1 and c1 is not 1:
-            raise ValueError("RobotController::SetConf invalid value c1={}".format(c1))
+            raise ValueError(
+                "RobotController::SetConf invalid value c1={}".format(c1))
         if c3 is not -1 and c3 is not 1:
-            raise ValueError("RobotController::SetConf invalid value c3={}".format(c3))
+            raise ValueError(
+                "RobotController::SetConf invalid value c3={}".format(c3))
         if c5 is not -1 and c5 is not 1:
-            raise ValueError("RobotController::SetConf invalid value c5={}".format(c5))
-        self.send_string_command(build_command("SetConf",[c1,c3,c5]))
+            raise ValueError(
+                "RobotController::SetConf invalid value c5={}".format(c5))
+        self.send_string_command(build_command("SetConf", [c1, c3, c5]))
         self.update_log_for_motion_commands()
-        
-    def SetJointAcc(self,p):
+
+    def SetJointAcc(self, p):
         """
         Call the SetJointAcc Motion Command
         this methods does not check the response
         """
-        if not (p>=1 and p<=100):
-            raise ValueError("RobotController::SetJointAcc invalid value p={}".format(p))
-        self.send_string_command(build_command("SetJointAcc",[p]))
+        if not (p >= 1 and p <= 100):
+            raise ValueError(
+                "RobotController::SetJointAcc invalid value p={}".format(p))
+        self.send_string_command(build_command("SetJointAcc", [p]))
         self.update_log_for_motion_commands()
 
-    def SetJointVel(self,p):
+    def SetJointVel(self, p):
         """
         Call the SetJointVel Motion Command
         this methods does not check the response
         """
-        if not (p>=0 and p<=100):
-            raise ValueError("RobotController::SetJointVel invalid value p={}".format(p))
-        self.send_string_command(build_command("SetJointVel",[p]))
+        if not (p >= 0 and p <= 100):
+            raise ValueError(
+                "RobotController::SetJointVel invalid value p={}".format(p))
+        self.send_string_command(build_command("SetJointVel", [p]))
         self.update_log_for_motion_commands()
 
     def SetTRF(self, origin, orientation):
@@ -632,14 +668,16 @@ class RobotController:
         orientation: desired frame orientation - euler angle XYZ [alpha,beta,gamma] in [deg]
         this methods does not check the response
         """
-        if not len(origin)==3:
-            raise ValueError("RobotController::SetTRF origin must have len=3, {} provided".format(len(origin)))
-        if not len(orientation)==3:
-            raise ValueError("RobotController::SetTRF orientation must have len=3, {} provided".format(len(orientation)))
-        
+        if not len(origin) == 3:
+            raise ValueError(
+                "RobotController::SetTRF origin must have len=3, {} provided".format(len(origin)))
+        if not len(orientation) == 3:
+            raise ValueError(
+                "RobotController::SetTRF orientation must have len=3, {} provided".format(len(orientation)))
+
         args = list(origin)
         args.extend(orientation)
-        self.send_string_command(build_command("SetTRF",args))
+        self.send_string_command(build_command("SetTRF", args))
         self.update_log_for_motion_commands()
 
     def SetWRF(self, origin, orientation):
@@ -649,14 +687,16 @@ class RobotController:
         orientation: desired frame orientation - euler angle XYZ [alpha,beta,gamma] in [deg]
         this methods does not check the response
         """
-        if not len(origin)==3:
-            raise ValueError("RobotController::SetWRF origin must have len=3, {} provided".format(len(origin)))
-        if not len(orientation)==3:
-            raise ValueError("RobotController::SetWRF orientation must have len=3, {} provided".format(len(orientation)))
-        
+        if not len(origin) == 3:
+            raise ValueError(
+                "RobotController::SetWRF origin must have len=3, {} provided".format(len(origin)))
+        if not len(orientation) == 3:
+            raise ValueError(
+                "RobotController::SetWRF orientation must have len=3, {} provided".format(len(orientation)))
+
         args = list(origin)
         args.extend(orientation)
-        self.send_string_command(build_command("SetWRF",args))
+        self.send_string_command(build_command("SetWRF", args))
         self.update_log_for_motion_commands()
 
     def SetVelTimeout(self, t):
@@ -664,10 +704,9 @@ class RobotController:
         Call the setVelTimeout Motion Command
         this methods does not check the response
         """
-        if not (t>=0.001 and t<=1):
-            raise ValueError("RobotController::setVelTimeout invalid value t={}".format(t))
-        self.send_string_command(build_command("setVelTimeout",[t]))
-        RobotController.patch_vel_commands() # PATCH
+        if not (t >= 0.001 and t <= 1):
+            raise ValueError(
+                "RobotController::setVelTimeout invalid value t={}".format(t))
+        self.send_string_command(build_command("setVelTimeout", [t]))
+        RobotController.patch_vel_commands()  # PATCH
         self.update_log_for_motion_commands()
-
-
