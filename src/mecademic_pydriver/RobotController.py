@@ -54,15 +54,20 @@ class RobotController:
         if self.socket:
             return  # already conencted
 
-        # create a socket and connect
-        self.socket = socket.socket()
-        self.socket.settimeout(self.socket_timeout)
-        self.socket.connect((self.address, self.port))
-        self.socket.settimeout(self.socket_timeout)
+        try:
+            # create a socket and connect
+            self.socket = socket.socket()
+            self.socket.settimeout(self.socket_timeout)
+            self.socket.connect((self.address, self.port))
+            self.socket.settimeout(self.socket_timeout)
+        except socket.error as error:
+            self.socket = None
+            raise error
+        
 
         # check that socket is not connected to nothing
         if self.socket is None:
-            raise RuntimeError("RobotFeedback::Connect - socket is None")
+            raise socket.error("Socket is NONE")
 
         self.mecademic_log = MecademicLog(
             self.socket,
