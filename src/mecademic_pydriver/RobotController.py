@@ -422,7 +422,8 @@ class RobotController:
         """
         This patch is to avoid the high freq bug of firmware v8.0.8
         """
-        time.sleep(0.04) #  0.04s -> 25Hz  ||| 1.0/26.0 - 0.0012
+        return
+        #time.sleep(0.04) #  0.04s -> 25Hz  ||| 1.0/26.0 - 0.0012
 
     def update_log_for_motion_commands(self):
         """
