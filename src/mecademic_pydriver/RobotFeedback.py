@@ -95,7 +95,7 @@ class RobotFeedback:
             joints = self.set_joints_from_messages(messages)
             pose = self.set_pose_from_messages(messages)
             robot_status = self.set_status_robot_from_messages(messages)
-            self.set_vel_from_messages(messages)
+            speed = self.set_vel_from_messages(messages)
  
         return joints, pose, speed, robot_status
  
