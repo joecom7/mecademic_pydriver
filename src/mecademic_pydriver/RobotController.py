@@ -413,6 +413,43 @@ class RobotController:
             responses_code=[],
             wait_for_new_messages=False)
 
+    def SetRealTimeMonitoring(self, monitor_list):
+        """
+        Call SetRealTimeMonitoring request command
+        # - 2200 or TargetJointPos, for the response of the GetRtTargetJointPos command;
+        # - 2201 or TargetCartPos, for the response of the GetRtTargetCartPos command;
+        # - 2202 or TargetJointVel, for the response of the GetRtTargetJointVel command;
+        # - 2204 or TargetCartVel, for the response of the GetRtTargetCartVel command;
+        # - 2210 or JointPos, for the response of the GetRtJointPos command;
+        # - 2211 or CartPos, for the response of the GetRtCartPos command;
+        # - 2212 or JointVel, for the response of the GetRtJointVel command;
+        # - 2213 or JointTorq, for the response of the GetRtJointTorq command;
+        # - 2214 or CartVel, for the response of the GetRtCartVel command;
+        # - 2218 or Conf, for the response of the GetRtConf command (sent only when changed);
+        # - 2219 or ConfTurn, for the response of the GetRtConfTurn command (sent only when changed);
+        # - 2220 or Accel, for the response of the GetRtAccelerometer command;
+        # - 2227 or Checkpoint, for every new checkpoint reached, preceded by a timestamp;
+        # - 2321 or GripperForce, for the response of the GetRtGripperForce command;
+        # - 2322 or GripperPos, for the response of the GetRtGripperPos command;
+        # - 2323 or GripperVel, for the response of the GetRtGripperVel command;
+        # - All, to enable all of the above responses
+        """
+        cmd = build_command("SetRealTimeMonitoring", monitor_list)
+        # self.send_request_command(
+        #     cmd,
+        #     errors_code=[],
+        #     responses_code=["2117"]
+        #     )
+        self.send_request_command(
+            cmd,
+            errors_code=[],
+            responses_code=[],
+            wait_for_new_messages=False
+            )
+
+    
+
+
     ################################################
     ###     MOTION COMMANDS                    #####
     ################################################
