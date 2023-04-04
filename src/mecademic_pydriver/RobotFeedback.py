@@ -36,7 +36,7 @@ class RobotFeedback:
             # v9.2.2
             print("RobotFeedback: Selected Version 9")
             self.rt_joints_fb_code = "2210"
-            self.rt_pose_fb_code = "2211"
+            self.rt_pose_fb_code = "2201"
             self.rt_cart_vel_code = "2214"
             self.status_robot_fb_code = "2007"
         elif firmware_version_8:
@@ -96,6 +96,7 @@ class RobotFeedback:
         joints = None
         pose = None
         robot_status = None
+        cart_vel = None
         if messages:
             messages.reverse()  # reverse the messages to get the newer
             if self.firmware_version_9:

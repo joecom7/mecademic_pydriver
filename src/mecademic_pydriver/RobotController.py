@@ -462,12 +462,12 @@ class RobotController:
         return
         #time.sleep(0.04) #  0.04s -> 25Hz  ||| 1.0/26.0 - 0.0012
 
-    def update_log_for_motion_commands(self):
+    def update_log_for_motion_commands(self,wait_for_new_messages=True):
         """
-        Update the log for the motion commands in a non bloking fashion
+        Update the log for the motion commands in a non bloking or blocking fashion
         """
         self.mecademic_log.update_log(
-            wait_for_new_messages=True, timeout=self.motion_commands_response_timeout)
+            wait_for_new_messages, timeout=self.motion_commands_response_timeout)
 
     def MoveJoints(self, joints):
         """
@@ -492,7 +492,7 @@ class RobotController:
                 "RobotController::MoveJointsVel Meca500 has 6 joints {} provided".format(len(joints_vel)))
         self.send_string_command(build_command("MoveJointsVel", joints_vel))
         RobotController.patch_vel_commands()  # PATCH
-        self.update_log_for_motion_commands()
+        self.update_log_for_motion_commands(wait_for_new_messages=False)
 
     def MoveLin(self, position, orientation):
         """
