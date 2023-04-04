@@ -38,6 +38,7 @@ class RobotFeedback:
             self.rt_joints_fb_code = "2210"
             self.rt_pose_fb_code = "2201"
             self.rt_cart_vel_code = "2214"
+            self.rt_target_cart_vel_fb_code = "2204"
             self.status_robot_fb_code = "2007"
         elif firmware_version_8:
             # 8.0.8.1-beta
@@ -97,19 +98,21 @@ class RobotFeedback:
         pose = None
         robot_status = None
         cart_vel = None
+        target_cart_vel = None
         if messages:
             messages.reverse()  # reverse the messages to get the newer
             if self.firmware_version_9:
                 joints = self.set_rt_joints_from_messages(messages)
                 pose = self.set_rt_pose_from_messages(messages)
                 cart_vel = self.set_rt_cart_vel_from_messages(messages)
+                target_cart_vel = self.set_rt_target_cart_vel_from_messages(messages)
             else:
                 joints = self.set_joints_from_messages(messages)
                 pose = self.set_pose_from_messages(messages)
             
             robot_status = self.set_status_robot_from_messages(messages)
 
-        return joints, pose, cart_vel, robot_status
+        return joints, pose, cart_vel, target_cart_vel, robot_status
 
     def set_joints_from_messages(self, messages):
         """
@@ -178,6 +181,23 @@ class RobotFeedback:
         if pose_payload:
             return payload2tuple(pose_payload)
         return None
+    
+    def set_rt_target_cart_vel_from_messages(self, messages):
+        """
+        NOTE: t, x_dot, y_dot , z_dot , wx, wy, wz
+        set targetcartvel from message list: target cartesian velocity of TRF 
+        with respect of WRF
+        set the current target cartesian velocity using the first occurance
+        in messages
+        """
+        target_cartvel_payload = extract_payload_from_messages(
+            self.rt_target_cart_vel_fb_code,
+            messages
+        )
+        if target_cartvel_payload:
+            return payload2tuple(target_cartvel_payload)
+        else:
+            return None
 
     def set_status_robot_from_messages(self, messages):
         """
